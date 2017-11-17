@@ -97,11 +97,11 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
             template: Whether the generated object class should be VM/Instance or a template class.
         """
         try:
-            return all_types(template)[provider.type](vm_name, provider, template_name)
+            return all_types(template)[provider.type](physical_server_name, provider, template_name)
         except KeyError:
             # Matching via provider type failed. Maybe we have some generic classes for infra/cloud?
             try:
-                return all_types(template)[provider.category](vm_name, provider, template_name)
+                return all_types(template)[provider.category](physical_server_name, provider, template_name)
             except KeyError:
                 raise UnknownProviderType(
                     'Unknown type of provider CRUD object: {}'
@@ -119,9 +119,9 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
     # Shared behaviour
     #
     def __init__(self, name, provider, appliance=None):
-        super(BaseVM, self).__init__()
+        super(BasePhysicalServer, self).__init__()
         Navigatable.__init__(self, appliance=appliance)
-        if type(self) in {BaseVM, PhysicalServer }:
+        if type(self) in {BasePhysicalServer, PhysicalServer }:
             raise NotImplementedError('This class cannot be instantiated.')
         self.name = name
         self.provider = provider
@@ -148,7 +148,7 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
         try:
             self.find_quadicon()
             return True
-        except VmOrInstanceNotFound:
+        except PhysicalServerNotFound:
             return False
 
     @property
@@ -164,7 +164,7 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
                 looking up archived or orphaned VMs
 
         Returns: entity of appropriate type
-        Raises: VmOrInstanceNotFound
+        Raises: PhysicalServerNotFound
         """
         # todo :refactor this method replace it with vm methods like get_state
         if from_any_provider:
@@ -181,7 +181,7 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
         try:
             return view.entities.get_entity(name=self.name, surf_pages=True)
         except ItemNotFound:
-            raise VmOrInstanceNotFound("VM '{}' not found in UI!".format(self.name))
+            raise PhysicalServerNotFound("PhysicalServer '{}' not found in UI!".format(self.name))
 
     def get_detail(self, properties=None, icon_href=False):
         """Gets details from the details infoblock
@@ -220,7 +220,7 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
             from_any_provider: 
 
         Raises:
-            VmOrInstanceNotFound:
+            PhysicalServerNotFound:
                 When unable to find the VM passed
         """
         if from_any_provider:
@@ -268,7 +268,7 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
         wait_for(
             lambda: self.exists,
             num_sec=timeout, delay=5, fail_func=_refresh,
-            message="wait for vm to appear")
+            message="wait for physical server to appear")
         if load_details:
             self.load_details()
 
@@ -311,7 +311,7 @@ class BasePhysicalServer(Pretty, Updateable, PolicyProfileAssignable, Widgetasti
             from_any_provider: 
 
         Raises:
-            VmOrInstanceNotFound:
+            PhysicalServerNotFound:
                 When unable to find the VM passed
         """
         if from_any_provider:

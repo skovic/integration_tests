@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """A model of an Infrastructure PhysicalServer in CFME."""
 import attr
 
@@ -107,7 +106,7 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
         changed = any([changed, credentials_changed, ipmi_credentials_changed])
         if changed:
             view.save_button.click()
-            logger.debug("Trying to save update for host with id: %s", str(self.get_db_id))
+            logger.debug("Trying to save update for physical server with id: %s", str(self.get_db_id))
             view = self.create_view(PhysicalServerDetailsView)
             view.flash.assert_success_message(
                 'PhysicalServer / Node "{}" was saved'.format(updates.get("name", self.name)))
@@ -166,7 +165,7 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
         view.toolbar.configuration.item_select("Refresh Relationships and Power States",
             handle_alert=cancel)
 
-    def wait_for_host_state_change(self, desired_state, timeout=300):
+    def wait_for_physical_server_state_change(self, desired_state, timeout=300):
         """Wait for PhysicalServer to come to desired state. This function waits just the needed amount of
         time thanks to wait_for.
 
@@ -239,8 +238,8 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
         """
         # TODO: Move to Sentaku
         try:
-            host = self.appliance.rest_api.collections.hosts.get(name=self.name)
-            host.action.edit(credentials={"userid": credentials.principal,
+            physical_server = self.appliance.rest_api.collections.physical_servers.get(name=self.name)
+            server.action.edit(credentials={"userid": credentials.principal,
                                           "password": credentials.secret})
         except APIException:
             return False
@@ -250,8 +249,8 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
 
         Returns: :py:class:`list` of datastores names
         """
-        host_details_view = navigate_to(self, "Details")
-        host_details_view.entities.relationships.click_at("Datastores")
+        physical_server_details_view = navigate_to(self, "Details")
+        physical_server_details_view.entities.relationships.click_at("Datastores")
         datastores_view = self.create_view(PhysicalServerAllDatastoresView)
         assert datastores_view.is_displayed
         return [entity.name for entity in datastores_view.entites.get_all_()]
@@ -259,7 +258,7 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
     @property
     def get_db_id(self):
         if self.db_id is None:
-            self.db_id = self.appliance.host_id(self.name)
+            self.db_id = self.appliance.physical_server_id(self.name)
             return self.db_id
         else:
             return self.db_id
@@ -360,10 +359,10 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
     def wait_to_appear(self):
         """Waits for the host to appear in the UI."""
         view = navigate_to(self.parent, "All")
-        logger.info("Waiting for the host to appear...")
+        logger.info("Waiting for the physical server to appear...")
         wait_for(
             lambda: self.exists,
-            message="Wait for the host to appear",
+            message="Wait for the physical server to appear",
             num_sec=1000,
             fail_func=view.browser.refresh
         )
@@ -371,10 +370,10 @@ class PhysicalServer(BaseEntity, Updateable, Pretty, PolicyProfileAssignable, Wi
     def wait_for_delete(self):
         """Waits for the host to remove from the UI."""
         view = navigate_to(self.parent, "All")
-        logger.info("Waiting for a host to delete...")
+        logger.info("Waiting for a physical server to delete...")
         wait_for(
             lambda: not self.exists,
-            message="Wait for the host to disappear",
+            message="Wait for the physical server to disappear",
             num_sec=500,
             fail_func=view.browser.refresh
         )
@@ -386,17 +385,17 @@ class PhysicalServerCollection(BaseCollection):
 
     ENTITY = PhysicalServer
 
-    def check_hosts(self, hosts):
-        hosts = list(hosts)
-        checked_hosts = list()
+    def check_physical_servers(self, physical_servers):
+        physical_servers = list(physical_servers)
+        checked_physical_servers = list()
         view = navigate_to(self, 'All')
 
-        for host in hosts:
+        for physical_server in physical_servers:
             try:
-                view.entities.get_entity(name=host.name, surf_pages=True).check()
-                checked_hosts.append(host)
+                view.entities.get_entity(name=physical_server.name, surf_pages=True).check()
+                checked_physical_servers.append(physical_server)
             except ItemNotFound:
-                raise ItemNotFound('Could not find host {} in the UI'.format(host.name))
+                raise ItemNotFound('Could not find physical server {} in the UI'.format(physical_server.name))
         return view
 
     def create(self, name, provider, credentials=None, hostname=None, ip_address=None,
@@ -433,45 +432,45 @@ class PhysicalServerCollection(BaseCollection):
         else:
             view.cancel_button.click()
             flash_message = "Add of new PhysicalServer / Node was cancelled by the user"
-        host = self.instantiate(name=name, hostname=hostname, ip_address=ip_address,
+        physical_server = self.instantiate(name=name, hostname=hostname, ip_address=ip_address,
                                 custom_ident=custom_ident, host_platform=host_platform,
                                 ipmi_address=ipmi_address, mac_address=mac_address,
                                 credentials=credentials, ipmi_credentials=ipmi_credentials,
                                 provider=provider)
-        view = host.create_view(PhysicalServersView)
+        view = physical_server.create_view(PhysicalServersView)
         assert view.is_displayed
         view.flash.assert_success_message(flash_message)
-        return host
+        return physical_server
 
     def all(self, provider):
         """returning all hosts objects"""
         view = navigate_to(self, 'All')
-        hosts = [self.instantiate(name=item, provider=provider)
+        physical_servers = [self.instantiate(name=item, provider=provider)
                  for item in view.entities.entity_names]
-        return hosts
+        return physical_servers
 
-    def run_smartstate_analysis(self, *hosts):
-        view = self.check_hosts(hosts)
+    def run_smartstate_analysis(self, *physical_servers):
+        view = self.check_physical_servers(physical_servers)
         view.toolbar.configuration.item_select('Perform SmartState Analysis', handle_alert=True)
-        for host in hosts:
+        for physical_server in physical_servers:
             view.flash.assert_success_message(
-                '"{}": Analysis successfully initiated'.format(host.name))
+                '"{}": Analysis successfully initiated'.format(physical_server.name))
 
-    def delete(self, *hosts):
+    def delete(self, *physical_servers):
         """Deletes this host from CFME."""
-        view = self.check_hosts(hosts)
+        view = self.check_physical_servers(physical_servers)
         view.toolbar.configuration.item_select('Remove items from Inventory', handle_alert=True)
         view.entities.flash.assert_success_message('The selected PhysicalServers / Nodes was deleted')
-        for host in hosts:
-            wait_for(lambda: not host.exists, num_sec=600, delay=30,
+        for physical_server in physical_servers:
+            wait_for(lambda: not physical_servers.exists, num_sec=600, delay=30,
                      message='Wait for PhysicalServer to be deleted')
 
-    def power_on(self, *hosts):
-        view = self.check_hosts(hosts)
+    def power_on(self, *physical_servers):
+        view = self.check_physical_servers(physical_servers)
         view.toolbar.power.item_select("Power On", handle_alert=True)
 
-    def power_off(self, *hosts):
-        view = self.check_hosts(hosts)
+    def power_off(self, *physical_servers):
+        view = self.check_physical_servers(physical_servers)
         view.toolbar.power.item_select("Power Off", handle_alert=True)
 
 
@@ -563,7 +562,7 @@ def get_from_config(provider_config_name):
     Returns: A PhysicalServer object that has methods that operate on CFME
     """
     # TODO: Include provider key in YAML and include provider object when creating
-    prov_config = conf.cfme_data.get('management_hosts', {})[provider_config_name]
+    prov_config = conf.cfme_data.get('management_physical_servers', {})[provider_config_name]
     credentials = get_credentials_from_config(prov_config['credentials'])
     ipmi_credentials = get_credentials_from_config(prov_config['ipmi_credentials'])
     ipmi_credentials.ipmi = True

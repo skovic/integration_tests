@@ -142,10 +142,6 @@ class PhysicalServerDetailsView(ComputePhysicalInfrastructureServersView):
 class PhysicalServerTimelinesView(TimelinesView, ComputePhysicalInfrastructureServersView):
     """Represents a PhysicalServer Timelines page."""
 
-    @property
-    def is_displayed(self):
-        return self.in_compute_infrastructure_hosts and super(TimelinesView, self).is_displayed
-
 
 class PhysicalServerManagePoliciesView(BaseLoggedInPage):
     """PhysicalServer's Manage Policies view."""
@@ -188,6 +184,3 @@ class PhysicalServersView(ComputePhysicalInfrastructureServersView):
     paginator = PaginationPane()
     including_entities = View.include(PhysicalServerEntitiesView, use_parent=True)
 
-    @property
-    def is_displayed(self):
-        return self.in_compute_infrastructure_hosts and self.title.text in "Physical Servers"

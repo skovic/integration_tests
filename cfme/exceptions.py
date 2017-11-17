@@ -483,3 +483,10 @@ class RBACOperationBlocked(CFMEException):
     permissions. Also thrown when trying to perform actions CRUD operations on roles/groups/users
     that are CFME defaults
     """
+
+class PhysicalServerNotFound(CFMEException):
+    """
+    Raised if a physical server cannot be found.
+    """
+    pass
+
